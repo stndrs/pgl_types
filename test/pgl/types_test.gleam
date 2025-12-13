@@ -1,4 +1,5 @@
 import gleam/dynamic
+import gleam/function
 import gleam/int
 import gleam/list
 import gleam/option.{Some}
@@ -8,6 +9,7 @@ import gleam/time/duration
 import gleam/time/timestamp
 import pgl/types
 import pgl/types/internal
+import pgl/value
 
 pub fn decode_timestamp_test() {
   let ts_value =
@@ -320,12 +322,12 @@ pub fn array_error_test() {
 // Encode tests //
 
 pub fn encode_bool_test() {
-  use valid <- list.map([#(True, 1), #(False, 0)])
+  use valid <- list.map([#(value.true, 1), #(value.false, 0)])
 
   let in = valid.0
   let expected = <<1:big-int-size(32), valid.1:big-int-size(8)>>
 
-  let assert Ok(out) = types.encode(in, bool(), with: types.bool)
+  let assert Ok(out) = types.encode(in, bool())
 
   let assert True = expected == out
 }
@@ -333,10 +335,10 @@ pub fn encode_bool_test() {
 pub fn encode_int2_test() {
   use valid <- list.map([32_767, 0, -32_768])
 
-  let in = valid
+  let in = value.int(valid)
   let expected = <<2:big-int-size(32), valid:big-int-size(16)>>
 
-  let assert Ok(out) = types.encode(in, int2(), with: types.int2)
+  let assert Ok(out) = types.encode(in, int2())
 
   let assert True = expected == out
 }
@@ -344,10 +346,10 @@ pub fn encode_int2_test() {
 pub fn encode_int2_error_test() {
   use invalid <- list.map([-100_000, 100_000, 32_768, -32_769])
 
-  let in = invalid
+  let in = value.int(invalid)
   let expected = "Out of range for int2"
 
-  let assert Error(msg) = types.encode(in, int2(), with: types.int2)
+  let assert Error(msg) = types.encode(in, int2())
 
   let assert True = expected == msg
 }
@@ -355,10 +357,10 @@ pub fn encode_int2_error_test() {
 pub fn encode_int4_test() {
   use valid <- list.map([2_147_483_647, 0, -2_147_483_648])
 
-  let in = valid
+  let in = value.int(valid)
   let expected = <<4:big-int-size(32), valid:big-int-size(32)>>
 
-  let assert Ok(out) = types.encode(in, int4(), with: types.int4)
+  let assert Ok(out) = types.encode(in, int4())
 
   let assert True = expected == out
 }
@@ -366,10 +368,10 @@ pub fn encode_int4_test() {
 pub fn encode_int4_error_test() {
   use invalid <- list.map([2_147_483_648, -2_147_483_649])
 
-  let in = invalid
+  let in = value.int(invalid)
   let expected = "Out of range for int4"
 
-  let assert Error(msg) = types.encode(in, int4(), with: types.int4)
+  let assert Error(msg) = types.encode(in, int4())
 
   let assert True = expected == msg
 }
@@ -381,10 +383,10 @@ pub fn encode_int8_test() {
     -9_223_372_036_854_775_808,
   ])
 
-  let in = valid
+  let in = value.int(valid)
   let expected = <<8:big-int-size(32), valid:big-int-size(64)>>
 
-  let assert Ok(out) = types.encode(in, int8(), with: types.int8)
+  let assert Ok(out) = types.encode(in, int8())
 
   let assert True = expected == out
 }
@@ -395,10 +397,10 @@ pub fn encode_int8_error_test() {
     -9_223_372_036_854_775_808 - 1,
   ])
 
-  let in = invalid
+  let in = value.int(invalid)
   let expected = "Out of range for int8"
 
-  let assert Error(msg) = types.encode(in, int8(), with: types.int8)
+  let assert Error(msg) = types.encode(in, int8())
 
   let assert True = expected == msg
 }
@@ -406,10 +408,10 @@ pub fn encode_int8_error_test() {
 pub fn encode_float4_test() {
   use valid <- list.map([0.0, 1.0, -1.0, 3.14, -42.5, 1.23e38])
 
-  let in = valid
+  let in = value.float(valid)
   let expected = <<4:big-int-size(32), valid:float-size(32)>>
 
-  let assert Ok(out) = types.encode(in, float4(), with: types.float4)
+  let assert Ok(out) = types.encode(in, float4())
 
   let assert True = expected == out
 }
@@ -417,10 +419,10 @@ pub fn encode_float4_test() {
 pub fn encode_float8_test() {
   use valid <- list.map([0.0, 1.0, -1.0, 3.14, -42.5, 1.23e308])
 
-  let in = valid
+  let in = value.float(valid)
   let expected = <<8:big-int-size(32), valid:float-size(64)>>
 
-  let assert Ok(out) = types.encode(in, float8(), with: types.float8)
+  let assert Ok(out) = types.encode(in, float8())
 
   let assert True = expected == out
 }
@@ -428,10 +430,10 @@ pub fn encode_float8_test() {
 pub fn encode_oid_test() {
   use valid <- list.map([0, 1042, 4_294_967_295])
 
-  let in = valid
+  let in = value.int(valid)
   let expected = <<4:big-int-size(32), valid:big-int-size(32)>>
 
-  let assert Ok(out) = types.encode(in, oid(), with: types.oid)
+  let assert Ok(out) = types.encode(in, oid())
 
   let assert True = expected == out
 }
@@ -439,10 +441,10 @@ pub fn encode_oid_test() {
 pub fn encode_oid_error_test() {
   use invalid <- list.map([-1, 4_294_967_296])
 
-  let in = invalid
+  let in = value.int(invalid)
   let expected = "Out of range for oid"
 
-  let assert Error(msg) = types.encode(in, oid(), with: types.oid)
+  let assert Error(msg) = types.encode(in, oid())
 
   let assert True = expected == msg
 }
@@ -450,10 +452,10 @@ pub fn encode_oid_error_test() {
 pub fn encode_varchar_test() {
   use valid <- list.map([#("hello", 5), #("", 0), #("PostgreSQL", 10)])
 
-  let in = valid.0
+  let in = value.text(valid.0)
   let expected = <<valid.1:big-int-size(32), valid.0:utf8>>
 
-  let assert Ok(out) = types.encode(in, varchar(), with: types.text)
+  let assert Ok(out) = types.encode(in, varchar())
 
   let assert True = expected == out
 }
@@ -465,18 +467,19 @@ pub fn encode_date_test() {
 
   let expected = <<4:big-int-size(32), -10_957:big-int-size(32)>>
 
-  let assert Ok(out) = types.encode(in, date(), with: types.date)
+  let assert Ok(out) = types.encode(value.date(in), date())
 
   let assert True = expected == out
 }
 
 pub fn encode_time_test() {
-  let t = calendar.TimeOfDay(hours: 0, minutes: 1, seconds: 19, nanoseconds: 0)
+  let tod =
+    calendar.TimeOfDay(hours: 0, minutes: 1, seconds: 19, nanoseconds: 0)
 
-  let in = t
+  let in = value.time(tod)
   let expected = <<8:big-int-size(32), 79_000_000:big-int-size(64)>>
 
-  let assert Ok(out) = types.encode(in, time(), with: types.time)
+  let assert Ok(out) = types.encode(in, time())
 
   let assert True = expected == out
 }
@@ -484,10 +487,10 @@ pub fn encode_time_test() {
 pub fn encode_timestamp_test() {
   let ts = timestamp.from_unix_seconds(1)
 
-  let in = ts
+  let in = value.timestamp(ts)
   let expected = <<8:big-int-size(32), -946_684_799_000_000:big-int-size(64)>>
 
-  let assert Ok(out) = types.encode(in, timestamp(), with: types.timestamp)
+  let assert Ok(out) = types.encode(in, timestamp())
 
   let assert True = expected == out
 }
@@ -524,7 +527,7 @@ pub fn encode_interval_test() {
     0:big-int-size(32),
   >>
 
-  let assert Ok(out) = types.encode(usecs, interval(), with: types.interval)
+  let assert Ok(out) = types.encode(value.interval(usecs), interval())
 
   let assert True = expected == out
 }
@@ -539,8 +542,9 @@ pub fn encode_timestamptz_test() {
     expected_utc_int:big-int-size(64),
   >>
 
-  let assert Ok(out) =
-    types.encode(#(ts, offset), timestamptz(), with: types.timestamptz)
+  let in = timestamp.add(ts, offset) |> value.timestamp
+
+  let assert Ok(out) = types.encode(in, timestamptz())
 
   let assert True = expected == out
 }
@@ -561,8 +565,9 @@ pub fn encode_positive_offtimestamptz_test() {
     ten_hours:big-int-size(64),
   >>
 
-  let assert Ok(out) =
-    types.encode(#(ts, offset), timestamptz(), with: types.timestamptz)
+  let in = timestamp.add(ts, offset) |> value.timestamp
+
+  let assert Ok(out) = types.encode(in, timestamptz())
 
   let assert True = expected == out
 }
@@ -586,8 +591,9 @@ pub fn encode_negative_offtimestamptz_test() {
     minus_two_thirty:big-int-size(64),
   >>
 
-  let assert Ok(out) =
-    types.encode(#(ts, offset), timestamptz(), with: types.timestamptz)
+  let in = timestamp.add(ts, offset) |> value.timestamp
+
+  let assert Ok(out) = types.encode(in, timestamptz())
 
   let assert True = expected == out
 }
@@ -599,15 +605,13 @@ pub fn empty_array_test() {
   >>
 
   let assert Ok(out) =
-    types.encode([], array(int2()), with: fn(val, info) {
-      types.array(val, info, of: types.int2)
-    })
+    types.encode(value.array([], of: value.int), array(int2()))
 
   let assert True = expected == out
 }
 
 pub fn string_array_test() {
-  let in = ["hello", "world"]
+  let in = value.array(["hello", "world"], of: value.text)
 
   let expected = <<
     38:big-int-size(32), 1:big-int-size(32), 0:big-int-size(32),
@@ -615,32 +619,26 @@ pub fn string_array_test() {
     5:big-int-size(32), "hello":utf8, 5:big-int-size(32), "world":utf8,
   >>
 
-  let assert Ok(out) =
-    types.encode(in, array(text()), with: fn(val, info) {
-      types.array(val, info, of: types.text)
-    })
+  let assert Ok(out) = types.encode(in, array(text()))
 
   let assert True = expected == out
 }
 
 pub fn int_array_test() {
-  let in = [42]
+  let in = value.array([42], of: value.int)
   let expected = <<
     28:big-int-size(32), 1:big-int-size(32), 0:big-int-size(32),
     23:big-int-size(32), 1:big-int-size(32), 1:big-int-size(32),
     4:big-int-size(32), 42:big-int-size(32),
   >>
 
-  let assert Ok(out) =
-    types.encode(in, array(int4()), with: fn(val, info) {
-      types.array(val, info, of: types.int4)
-    })
+  let assert Ok(out) = types.encode(in, array(int4()))
 
   let assert True = expected == out
 }
 
 pub fn null_array_test() {
-  let in = [Nil]
+  let in = value.array([value.null], of: function.identity)
 
   let expected = <<
     24:big-int-size(32), 1:big-int-size(32), 1:big-int-size(32),
@@ -648,28 +646,58 @@ pub fn null_array_test() {
     -1:big-int-size(32),
   >>
 
-  let assert Ok(out) =
-    types.encode(in, array(int4()), with: fn(val, info) {
-      types.array(val, info, of: types.null)
-    })
+  let assert Ok(out) = types.encode(in, array(int4()))
 
   let assert True = expected == out
 }
 
-// pub fn nested_array_test() {
-//   let in = [[12, 23]]
-// 
-//   let expected = <<>>
-// 
-//   let assert Ok(out) =
-//     types.encode(in, array(array(int4())), with: fn(val, info) {
-//       types.array(val, info, of: fn(val1, elem_info) {
-//         types.array(val1, elem_info, of: types.int4)
-//       })
-//     })
-// 
-//   let assert True = expected == out
-// }
+pub fn nested_array_test() {
+  let in = value.Array([value.array([12, 23], of: value.int)])
+
+  let expected = <<
+    // total size of encoded array
+    68:big-int-size(32),
+    // number of dimensions
+    2:big-int-size(32),
+    // flags (has_nulls)
+    0:big-int-size(32),
+    // element OID
+    143:big-int-size(32),
+    // size of first dimension
+    1:big-int-size(32),
+    // lower bound
+    1:big-int-size(32),
+    // size of second dimension
+    2:big-int-size(32),
+    // lower bound
+    1:big-int-size(32),
+    // elems (nested array)
+    36:big-int-size(32),
+    // number of dimensions
+    1:big-int-size(32),
+    // flags (has_nulls)
+    0:big-int-size(32),
+    // element OID
+    23:big-int-size(32),
+    // size of second dimension
+    2:big-int-size(32),
+    // lower bound
+    1:big-int-size(32),
+    // elems (int4)
+    // size of element
+    4:big-int-size(32),
+    // element
+    12:big-int-size(32),
+    // size of element
+    4:big-int-size(32),
+    // element
+    23:big-int-size(32),
+  >>
+
+  let assert Ok(out) = types.encode(in, array(array(int4())))
+
+  let assert True = expected == out
+}
 
 // TypeInfo helpers
 

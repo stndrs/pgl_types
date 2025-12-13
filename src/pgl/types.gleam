@@ -9,6 +9,7 @@ import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
 import pgl/types/internal
+import pgl/value.{type Value}
 
 pub type TypeInfo {
   TypeInfo(
@@ -90,73 +91,65 @@ pub fn comp_types(ti: TypeInfo, comp_types: Option(List(TypeInfo))) -> TypeInfo 
 
 // ---------- Encoding ---------- //
 
-pub fn encode(
-  val: a,
-  ti: TypeInfo,
-  with encoder: fn(a, TypeInfo) -> Result(BitArray, String),
-) -> Result(BitArray, String) {
-  case ti.typesend {
-    "array_send" -> encoder(val, ti)
-    "boolsend" -> encoder(val, ti)
-    "oidsend" -> encoder(val, ti)
-    "int2send" -> encoder(val, ti)
-    "int4send" -> encoder(val, ti)
-    "int8send" -> encoder(val, ti)
-    "float4send" -> encoder(val, ti)
-    "float8send" -> encoder(val, ti)
-    "textsend" -> encoder(val, ti)
-    "varcharsend" -> encoder(val, ti)
-    "namesend" -> encoder(val, ti)
-    "charsend" -> encoder(val, ti)
-    "byteasend" -> encoder(val, ti)
-    "time_send" -> encoder(val, ti)
-    "date_send" -> encoder(val, ti)
-    "timestamp_send" -> encoder(val, ti)
-    "timestamptz_send" -> encoder(val, ti)
-    "interval_send" -> encoder(val, ti)
-    _ -> Error("Unsupported type")
+pub fn encode(value: Value, ti: TypeInfo) -> Result(BitArray, String) {
+  case value {
+    value.Null -> encode_null(Nil, ti)
+    value.Bool(val) -> encode_bool(val, ti)
+    value.Int(val) -> encode_int(val, ti)
+    value.Float(val) -> encode_float(val, ti)
+    value.Text(val) -> encode_text(val, ti)
+    value.Bytea(val) -> encode_bytea(val, ti)
+    value.Time(val) -> encode_time(val, ti)
+    value.Date(val) -> encode_date(val, ti)
+    value.Timestamp(val) -> encode_timestamp(val, ti)
+    value.Interval(val) -> encode_interval(val, ti)
+    value.Array(val) -> encode_array(val, ti)
   }
 }
 
-pub fn array(
-  val: List(a),
-  ti: TypeInfo,
-  of inner: fn(a, TypeInfo) -> Result(BitArray, String),
-) -> Result(BitArray, String) {
-  let dimensions = case val {
-    [] -> []
-    _ -> [list.length(val)]
-  }
+fn encode_array(elems: List(Value), ti: TypeInfo) -> Result(BitArray, String) {
+  let dimensions = arr_dims(elems)
 
   case ti.elem_type {
     Some(elem_ti) -> {
-      use encoded_elems <- result.try(list.try_map(val, inner(_, elem_ti)))
+      elems
+      |> list.try_map(encode(_, elem_ti))
+      |> result.try(fn(encoded_elems) {
+        let has_nulls = list.contains(encoded_elems, <<-1:big-int-size(32)>>)
 
-      let has_nulls = list.contains(encoded_elems, <<-1:big-int-size(32)>>)
-
-      encode_array(dimensions, has_nulls, elem_ti, val, inner)
+        do_encode_array(dimensions, has_nulls, elem_ti, encoded_elems)
+      })
     }
     None -> Error("Missing elem type info")
   }
 }
 
-fn encode_array(
+fn arr_dims(elems: List(Value)) -> List(Int) {
+  case elems {
+    [] -> []
+    [value.Array(inner), ..] -> {
+      let inner_dims = arr_dims(inner)
+      let dim = list.length(elems)
+      [dim, ..inner_dims]
+    }
+    elems -> {
+      let dim = list.length(elems)
+      [dim]
+    }
+  }
+}
+
+fn do_encode_array(
   dimensions: List(Int),
   has_nulls: Bool,
   ti: TypeInfo,
-  vals: List(a),
-  with encoder: fn(a, TypeInfo) -> Result(BitArray, String),
+  encoded: List(BitArray),
 ) -> Result(BitArray, String) {
   let header = array_header(dimensions, has_nulls, ti.oid)
 
-  case vals {
-    [] -> raw(header, ti)
-    _ -> {
-      vals
-      |> list.try_map(encoder(_, ti))
-      |> result.map(fn(elems) { bit_array.concat([header, ..elems]) })
-      |> result.try(raw(_, ti))
-    }
+  case encoded {
+    [] -> encode_bytea(header, ti)
+    _ -> bit_array.concat([header, ..encoded]) |> encode_bytea(ti)
   }
 }
 
@@ -173,9 +166,8 @@ fn array_header(
   }
 
   let encoded_dimensions =
-    list.map(dimensions, fn(dimension) {
-      <<dimension:big-int-size(32), 1:big-int-size(32)>>
-    })
+    dimensions
+    |> list.map(fn(dim) { <<dim:big-int-size(32), 1:big-int-size(32)>> })
     |> bit_array.concat
 
   [
@@ -185,82 +177,85 @@ fn array_header(
   |> bit_array.concat
 }
 
-pub fn null(_: a, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_null(_: a, _ti: TypeInfo) -> Result(BitArray, String) {
   Ok(<<-1:big-int-size(32)>>)
 }
 
-pub fn bool(bool: Bool, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_bool(bool: Bool, _ti: TypeInfo) -> Result(BitArray, String) {
   case bool {
     True -> Ok(<<1:big-int-size(32), 1:big-int-size(8)>>)
     False -> Ok(<<1:big-int-size(32), 0:big-int-size(8)>>)
   }
 }
 
-pub fn oid(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_oid(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
   case 0 <= num && num <= internal.oid_max {
     True -> Ok(<<4:big-int-size(32), num:big-int-size(32)>>)
     False -> Error("Out of range for oid")
   }
 }
 
-pub fn int(num: Int, ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_int(num: Int, ti: TypeInfo) -> Result(BitArray, String) {
   case ti.typesend {
-    "oidsend" -> oid(num, ti)
-    "int2send" -> int2(num, ti)
-    "int4send" -> int4(num, ti)
-    "int8send" -> int8(num, ti)
-    _ -> Error("Unsupported int type")
+    "oidsend" -> encode_oid(num, ti)
+    "int2send" -> encode_int2(num, ti)
+    "int4send" -> encode_int4(num, ti)
+    "int8send" -> encode_int8(num, ti)
+    _ -> {
+      echo ti
+      Error("Unsupported int type")
+    }
   }
 }
 
-pub fn int2(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_int2(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
   case -internal.int2_min <= num && num <= internal.int2_max {
     True -> Ok(<<2:big-int-size(32), num:big-int-size(16)>>)
     False -> Error("Out of range for int2")
   }
 }
 
-pub fn int4(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_int4(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
   case -internal.int4_min <= num && num <= internal.int4_max {
     True -> Ok(<<4:big-int-size(32), num:big-int-size(32)>>)
     False -> Error("Out of range for int4")
   }
 }
 
-pub fn int8(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_int8(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
   case -internal.int8_min <= num && num <= internal.int8_max {
     True -> Ok(<<8:big-int-size(32), num:big-int-size(64)>>)
     False -> Error("Out of range for int8")
   }
 }
 
-pub fn float(num: Float, ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_float(num: Float, ti: TypeInfo) -> Result(BitArray, String) {
   case ti.typesend {
-    "float4send" -> float4(num, ti)
-    "float8send" -> float8(num, ti)
+    "float4send" -> encode_float4(num, ti)
+    "float8send" -> encode_float8(num, ti)
     _ -> Error("Unsupported int type")
   }
 }
 
-pub fn float4(num: Float, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_float4(num: Float, _ti: TypeInfo) -> Result(BitArray, String) {
   Ok(<<4:big-int-size(32), num:big-float-size(32)>>)
 }
 
-pub fn float8(num: Float, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_float8(num: Float, _ti: TypeInfo) -> Result(BitArray, String) {
   Ok(<<8:big-int-size(32), num:big-float-size(64)>>)
 }
 
-pub fn text(text: String, ti: TypeInfo) -> Result(BitArray, String) {
-  bit_array.from_string(text) |> raw(ti)
+fn encode_text(text: String, ti: TypeInfo) -> Result(BitArray, String) {
+  bit_array.from_string(text) |> encode_bytea(ti)
 }
 
-pub fn raw(bits: BitArray, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_bytea(bits: BitArray, _ti: TypeInfo) -> Result(BitArray, String) {
   let len = bit_array.byte_size(bits)
 
   Ok(<<len:big-int-size(32), bits:bits>>)
 }
 
-pub fn date(date: calendar.Date, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_date(date: calendar.Date, _ti: TypeInfo) -> Result(BitArray, String) {
   let gregorian_days =
     internal.date_to_gregorian_days(
       date.year,
@@ -272,7 +267,10 @@ pub fn date(date: calendar.Date, _ti: TypeInfo) -> Result(BitArray, String) {
   Ok(<<4:big-int-size(32), pg_days:big-int-size(32)>>)
 }
 
-pub fn time(tod: calendar.TimeOfDay, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_time(
+  tod: calendar.TimeOfDay,
+  _ti: TypeInfo,
+) -> Result(BitArray, String) {
   let usecs =
     duration.hours(tod.hours)
     |> duration.add(duration.minutes(tod.minutes))
@@ -283,7 +281,7 @@ pub fn time(tod: calendar.TimeOfDay, _ti: TypeInfo) -> Result(BitArray, String) 
   Ok(<<8:big-int-size(32), usecs:big-int-size(64)>>)
 }
 
-pub fn interval(
+fn encode_interval(
   dur: duration.Duration,
   _ti: TypeInfo,
 ) -> Result(BitArray, String) {
@@ -299,7 +297,7 @@ pub fn interval(
   Ok(encoded)
 }
 
-pub fn timestamp(
+fn encode_timestamp(
   ts: timestamp.Timestamp,
   _ti: TypeInfo,
 ) -> Result(BitArray, String) {
@@ -311,7 +309,7 @@ pub fn timestamp(
   Ok(<<8:big-int-size(32), ts_int:big-int-size(64)>>)
 }
 
-pub fn timestamptz(
+fn encode_timestamptz(
   tsz: #(timestamp.Timestamp, duration.Duration),
   _ti: TypeInfo,
 ) -> Result(BitArray, String) {
