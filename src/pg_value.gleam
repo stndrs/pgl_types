@@ -228,7 +228,7 @@ pub type TypeInfo {
   )
 }
 
-pub fn info(oid: Int) -> TypeInfo {
+pub fn type_info(oid: Int) -> TypeInfo {
   TypeInfo(
     oid:,
     name: "",

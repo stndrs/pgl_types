@@ -839,109 +839,109 @@ pub fn nested_array_test() {
 // TypeInfo helpers
 
 fn oid() {
-  value.info(26)
+  value.type_info(26)
   |> value.typesend("oidsend")
   |> value.typereceive("oidrecv")
 }
 
 fn bool() {
-  value.info(16)
+  value.type_info(16)
   |> value.typesend("boolsend")
   |> value.typereceive("boolrecv")
 }
 
 fn int2() {
-  value.info(21)
+  value.type_info(21)
   |> value.typesend("int2send")
   |> value.typereceive("int2recv")
 }
 
 fn int4() {
-  value.info(23)
+  value.type_info(23)
   |> value.typesend("int4send")
   |> value.typereceive("int4recv")
 }
 
 fn int8() {
-  value.info(20)
+  value.type_info(20)
   |> value.typesend("int8send")
   |> value.typereceive("int8recv")
 }
 
 fn float4() {
-  value.info(700)
+  value.type_info(700)
   |> value.typesend("float4send")
   |> value.typereceive("float4recv")
 }
 
 fn float8() {
-  value.info(701)
+  value.type_info(701)
   |> value.typesend("float8send")
   |> value.typereceive("float8recv")
 }
 
 fn varchar() {
-  value.info(1043)
+  value.type_info(1043)
   |> value.typesend("varcharsend")
   |> value.typereceive("varcharrecv")
 }
 
 fn text() {
-  value.info(25)
+  value.type_info(25)
   |> value.typesend("textsend")
   |> value.typereceive("textrecv")
 }
 
 fn bytea() {
-  value.info(17)
+  value.type_info(17)
   |> value.typesend("byteasend")
   |> value.typereceive("bytearecv")
 }
 
 fn char() {
-  value.info(18)
+  value.type_info(18)
   |> value.typesend("charsend")
   |> value.typereceive("charrecv")
 }
 
 fn name() {
-  value.info(19)
+  value.type_info(19)
   |> value.typesend("namesend")
   |> value.typereceive("namerecv")
 }
 
 fn time() {
-  value.info(1083)
+  value.type_info(1083)
   |> value.typesend("time_send")
   |> value.typereceive("time_recv")
 }
 
 fn date() {
-  value.info(1082)
+  value.type_info(1082)
   |> value.typesend("date_send")
   |> value.typereceive("date_recv")
 }
 
 fn timestamp() {
-  value.info(1114)
+  value.type_info(1114)
   |> value.typesend("timestamp_send")
   |> value.typereceive("timestamp_recv")
 }
 
 fn timestamptz() {
-  value.info(1184)
+  value.type_info(1184)
   |> value.typesend("timestamptz_send")
   |> value.typereceive("timestamptz_recv")
 }
 
 fn interval() {
-  value.info(1186)
+  value.type_info(1186)
   |> value.typesend("interval_send")
   |> value.typereceive("interval_recv")
 }
 
 fn array(ti: value.TypeInfo) -> value.TypeInfo {
-  value.info(143)
+  value.type_info(143)
   |> value.typesend("array_send")
   |> value.typereceive("array_recv")
   |> value.elem_type(Some(ti))
