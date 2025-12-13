@@ -10,21 +10,29 @@ import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
 
+/// `Offset` represents a UTC offset. `Timestamptz` is composed
+/// of a `timestamp.Timestamp` and `Offset`. The offset will be
+/// applied to the timestamp when being encoded.
+///
+/// A timestamp with a positive offset represents some time in
+/// the future, relative to UTC.
+/// A timestamp with a negative offset represents some time in
+/// the past, relative to UTC.
+///
+/// Offsets will be subtracted from the `timestamp.Timestamp`
+/// so the encoded value is a UTC timestamp.
 pub type Offset {
   Offset(hours: Int, minutes: Int)
 }
 
+/// Returns an Offset with the provided hours and 0 minutes.
 pub fn offset(hours: Int) -> Offset {
   Offset(hours:, minutes: 0)
 }
 
+/// Applies some number of minutes to the Offset
 pub fn minutes(offset: Offset, minutes: Int) -> Offset {
   Offset(..offset, minutes:)
-}
-
-pub fn offset_to_duration(offset: Offset) -> duration.Duration {
-  duration.hours(offset.hours)
-  |> duration.add(duration.minutes(offset.minutes))
 }
 
 pub type Value {
@@ -193,6 +201,19 @@ fn timestamptz_to_string(ts: timestamp.Timestamp, offset: Offset) -> String {
   |> timestamp_to_string
 }
 
+fn offset_to_duration(offset: Offset) -> duration.Duration {
+  let sign = case offset.hours < 0 {
+    True -> 1
+    False -> -1
+  }
+
+  int.absolute_value(offset.hours)
+  |> int.multiply(60)
+  |> int.add(offset.minutes)
+  |> int.multiply(sign)
+  |> duration.minutes
+}
+
 fn duration_to_string(dur: duration.Duration) -> String {
   duration.to_iso8601_string(dur)
   |> single_quote
@@ -293,7 +314,7 @@ pub fn comp_types(ti: TypeInfo, comp_types: Option(List(TypeInfo))) -> TypeInfo 
 
 pub fn encode(value: Value, ti: TypeInfo) -> Result(BitArray, String) {
   case value {
-    Null -> encode_null(Nil, ti)
+    Null -> encode_null(ti)
     Bool(val) -> encode_bool(val, ti)
     Int(val) -> encode_int(val, ti)
     Float(val) -> encode_float(val, ti)
@@ -378,7 +399,7 @@ fn array_header(
   |> bit_array.concat
 }
 
-fn encode_null(_: a, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_null(_ti: TypeInfo) -> Result(BitArray, String) {
   Ok(<<-1:big-int-size(32)>>)
 }
 
