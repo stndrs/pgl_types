@@ -1,3 +1,6 @@
+//// PostgreSQL values, along with their encoders and decoders. Can
+//// be used by PostgreSQL client libraries written in gleam.
+
 import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/float
@@ -102,6 +105,17 @@ pub fn array(vals: List(a), of kind: fn(a) -> Value) -> Value {
   |> Array
 }
 
+/// Checks if the provided value is `option.Some` or `option.None`. If
+/// `None`, then the value returned is `value.Null`. If `Some` value is
+/// provided, then it is passed to the `inner_type` function.
+///
+/// Example:
+///
+/// ```gleam
+///   let int = pg_value.nullable(pg_value.int, Some(10))
+///
+///   let null = pg_value.nullable(pg_value.int, None)
+/// ```
 pub fn nullable(inner_type: fn(a) -> Value, value: Option(a)) -> Value {
   case value {
     Some(term) -> inner_type(term)
@@ -109,6 +123,7 @@ pub fn nullable(inner_type: fn(a) -> Value, value: Option(a)) -> Value {
   }
 }
 
+/// Converts a `Value` to a string formatted properly for PostgreSQL
 pub fn to_string(val: Value) -> String {
   case val {
     Null -> "NULL"
@@ -232,6 +247,7 @@ fn pad_zero(n: Int) -> String {
 
 // PG Types
 
+/// Information about a PostgreSQL type. Needed for encoding and decoding Values.
 pub type TypeInfo {
   TypeInfo(
     oid: Int,
@@ -249,6 +265,8 @@ pub type TypeInfo {
   )
 }
 
+/// Returns a TypeInfo record with the provided oid Int, with
+/// all other values empty.
 pub fn type_info(oid: Int) -> TypeInfo {
   TypeInfo(
     oid:,
@@ -266,52 +284,64 @@ pub fn type_info(oid: Int) -> TypeInfo {
   )
 }
 
+/// Sets the name of a TypeInfo record.
 pub fn name(ti: TypeInfo, name: String) -> TypeInfo {
   TypeInfo(..ti, name:)
 }
 
+/// Sets the typesend value of a TypeInfo record.
 pub fn typesend(ti: TypeInfo, typesend: String) -> TypeInfo {
   TypeInfo(..ti, typesend:)
 }
 
+/// Sets the typereceive value of a TypeInfo record.
 pub fn typereceive(ti: TypeInfo, typereceive: String) -> TypeInfo {
   TypeInfo(..ti, typereceive:)
 }
 
+/// Sets the typelen value of a TypeInfo record.
 pub fn typelen(ti: TypeInfo, typelen: Int) -> TypeInfo {
   TypeInfo(..ti, typelen:)
 }
 
+/// Sets the output value of a TypeInfo record.
 pub fn output(ti: TypeInfo, output: String) -> TypeInfo {
   TypeInfo(..ti, output:)
 }
 
+/// Sets the input value of a TypeInfo record.
 pub fn input(ti: TypeInfo, input: String) -> TypeInfo {
   TypeInfo(..ti, input:)
 }
 
+/// Sets the elem_oid value of a TypeInfo record.
 pub fn elem_oid(ti: TypeInfo, elem_oid: Int) -> TypeInfo {
   TypeInfo(..ti, elem_oid:)
 }
 
+/// Sets the base_oid value of a TypeInfo record.
 pub fn base_oid(ti: TypeInfo, base_oid: Int) -> TypeInfo {
   TypeInfo(..ti, base_oid:)
 }
 
+/// Sets the comp_oids value of a TypeInfo record.
 pub fn comp_oids(ti: TypeInfo, comp_oids: List(Int)) -> TypeInfo {
   TypeInfo(..ti, comp_oids:)
 }
 
+/// Sets the elem_type value of a TypeInfo record.
 pub fn elem_type(ti: TypeInfo, elem_type: Option(TypeInfo)) -> TypeInfo {
   TypeInfo(..ti, elem_type:)
 }
 
+/// Sets the comp_types value of a TypeInfo record.
 pub fn comp_types(ti: TypeInfo, comp_types: Option(List(TypeInfo))) -> TypeInfo {
   TypeInfo(..ti, comp_types:)
 }
 
 // ---------- Encoding ---------- //
 
+/// Encodes a Value as a PostgreSQL data type
 pub fn encode(value: Value, ti: TypeInfo) -> Result(BitArray, String) {
   case value {
     Null -> encode_null(ti)
@@ -549,6 +579,7 @@ fn encode_timestamptz(
 
 // ---------- Decoding ---------- //
 
+/// Decodes binary PostgreSQL data into a Dynamic value.
 pub fn decode(val: BitArray, ti: TypeInfo) -> Result(Dynamic, String) {
   case ti.typereceive {
     "array_recv" ->
@@ -869,10 +900,10 @@ const nsecs_per_usec = 1000
 // FFI
 
 @external(erlang, "calendar", "gregorian_days_to_date")
-pub fn gregorian_days_to_date(days: Int) -> #(Int, Int, Int)
+fn gregorian_days_to_date(days: Int) -> #(Int, Int, Int)
 
 @external(erlang, "calendar", "seconds_to_time")
-pub fn seconds_to_time(seconds: Int) -> #(Int, Int, Int)
+fn seconds_to_time(seconds: Int) -> #(Int, Int, Int)
 
 @external(erlang, "calendar", "date_to_gregorian_days")
-pub fn date_to_gregorian_days(year: Int, month: Int, day: Int) -> Int
+fn date_to_gregorian_days(year: Int, month: Int, day: Int) -> Int
