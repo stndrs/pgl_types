@@ -1,57 +1,32 @@
-# pgl_types
+# pg_value
 
-[![Package Version](https://img.shields.io/hexpm/v/pgl_types)](https://hex.pm/packages/pgl_types)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/pgl_types/)
-
-## Supported types
-
-- `bool`
-- `oid`
-- `int2`
-- `int4`
-- `int8`
-- `float4`
-- `float8`
-- `text`
-- `varchar`
-- `name`
-- `char`
-- `bytea`
-- `time`
-- `date`
-- `timestamp`
-- `timestamptz`
-- `interval`
-- `array`
-
-## TODO
-
-- [ ] Nested `array` encoding
-- [ ] More types
+[![Package Version](https://img.shields.io/hexpm/v/pg_value)](https://hex.pm/packages/pg_value)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/pg_value/)
 
 ```gleam
-import pgl/types
-import pgl/value
+import pg_value as value
 
 pub fn main() -> Nil {
   let int4_type_info = get_type_info("int4")
 
   // Encode an integer as int4
-  let assert Ok(encoded) = types.encode(10, int4_type_info, with: types.int4)
+  let assert Ok(encoded) = value.encode(value.int(10), int4_type_info)
 
   // Decode a bit array as an int4 into a dynamic value
-  let assert Ok(int_dynamic) = types.decode(encoded, int4_type_info)
+  let assert Ok(int_dynamic) = value.decode(encoded, int4_type_info)
 
   // Create a list of `value.Value`s
   let params = [value.int(10), value.null, value.text("text")]
 }
 ```
 
-Further documentation can be found at <https://hexdocs.pm/pgl_types>.
+Further documentation can be found at <https://hexdocs.pm/pg_value>.
 
 ## Installation
 
-TODO
+```sh
+gleam add pg_value
+```
 
 ## Development
 
