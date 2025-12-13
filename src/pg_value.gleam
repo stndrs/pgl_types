@@ -2,6 +2,7 @@
 //// be used by PostgreSQL client libraries written in gleam.
 
 import gleam/bit_array
+import gleam/bool
 import gleam/dynamic.{type Dynamic}
 import gleam/float
 import gleam/int
@@ -359,7 +360,19 @@ pub fn encode(value: Value, ti: TypeInfo) -> Result(BitArray, String) {
   }
 }
 
+fn validate_typesend(
+  expected: String,
+  ti: TypeInfo,
+  next: fn() -> Result(t, String),
+) -> Result(t, String) {
+  use <- bool.lazy_guard(when: expected == ti.typesend, return: next)
+
+  Error("Attempted to encode " <> expected <> " as " <> ti.typesend)
+}
+
 fn encode_array(elems: List(Value), ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("array_send", ti)
+
   let dimensions = arr_dims(elems)
 
   case ti.elem_type {
@@ -399,9 +412,15 @@ fn do_encode_array(
 ) -> Result(BitArray, String) {
   let header = array_header(dimensions, has_nulls, ti.oid)
 
+  let encoder = fn(bits) {
+    let len = bit_array.byte_size(bits)
+
+    Ok(<<len:big-int-size(32), bits:bits>>)
+  }
+
   case encoded {
-    [] -> encode_bytea(header, ti)
-    _ -> bit_array.concat([header, ..encoded]) |> encode_bytea(ti)
+    [] -> encoder(header)
+    _ -> bit_array.concat([header, ..encoded]) |> encoder
   }
 }
 
@@ -433,14 +452,18 @@ fn encode_null(_ti: TypeInfo) -> Result(BitArray, String) {
   Ok(<<-1:big-int-size(32)>>)
 }
 
-fn encode_bool(bool: Bool, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_bool(bool: Bool, ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("boolsend", ti)
+
   case bool {
     True -> Ok(<<1:big-int-size(32), 1:big-int-size(8)>>)
     False -> Ok(<<1:big-int-size(32), 0:big-int-size(8)>>)
   }
 }
 
-fn encode_oid(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_oid(num: Int, ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("oidsend", ti)
+
   case 0 <= num && num <= oid_max {
     True -> Ok(<<4:big-int-size(32), num:big-int-size(32)>>)
     False -> Error("Out of range for oid")
@@ -454,27 +477,35 @@ fn encode_int(num: Int, ti: TypeInfo) -> Result(BitArray, String) {
     "int4send" -> encode_int4(num, ti)
     "int8send" -> encode_int8(num, ti)
     _ -> {
-      echo ti
-      Error("Unsupported int type")
+      let message =
+        "Attempted to encode " <> int.to_string(num) <> " as " <> ti.typesend
+
+      Error(message)
     }
   }
 }
 
-fn encode_int2(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_int2(num: Int, ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("int2send", ti)
+
   case -int2_min <= num && num <= int2_max {
     True -> Ok(<<2:big-int-size(32), num:big-int-size(16)>>)
     False -> Error("Out of range for int2")
   }
 }
 
-fn encode_int4(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_int4(num: Int, ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("int4send", ti)
+
   case -int4_min <= num && num <= int4_max {
     True -> Ok(<<4:big-int-size(32), num:big-int-size(32)>>)
     False -> Error("Out of range for int4")
   }
 }
 
-fn encode_int8(num: Int, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_int8(num: Int, ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("int8send", ti)
+
   case -int8_min <= num && num <= int8_max {
     True -> Ok(<<8:big-int-size(32), num:big-int-size(64)>>)
     False -> Error("Out of range for int8")
@@ -485,29 +516,50 @@ fn encode_float(num: Float, ti: TypeInfo) -> Result(BitArray, String) {
   case ti.typesend {
     "float4send" -> encode_float4(num, ti)
     "float8send" -> encode_float8(num, ti)
-    _ -> Error("Unsupported int type")
+    _ -> Error("Unsupported float type")
   }
 }
 
-fn encode_float4(num: Float, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_float4(num: Float, ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("float4send", ti)
+
   Ok(<<4:big-int-size(32), num:big-float-size(32)>>)
 }
 
-fn encode_float8(num: Float, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_float8(num: Float, ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("float8send", ti)
+
   Ok(<<8:big-int-size(32), num:big-float-size(64)>>)
 }
 
 fn encode_text(text: String, ti: TypeInfo) -> Result(BitArray, String) {
-  bit_array.from_string(text) |> encode_bytea(ti)
+  let encoder = fn(text) {
+    let bits = bit_array.from_string(text)
+    let len = bit_array.byte_size(bits)
+
+    Ok(<<len:big-int-size(32), bits:bits>>)
+  }
+
+  case ti.typesend {
+    "varcharsend" -> encoder(text)
+    "textsend" -> encoder(text)
+    "charsend" -> encoder(text)
+    "namesend" -> encoder(text)
+    _ -> Error("Attempted to encode '" <> text <> "' as " <> ti.typesend)
+  }
 }
 
-fn encode_bytea(bits: BitArray, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_bytea(bits: BitArray, ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("byteasend", ti)
+
   let len = bit_array.byte_size(bits)
 
   Ok(<<len:big-int-size(32), bits:bits>>)
 }
 
-fn encode_date(date: calendar.Date, _ti: TypeInfo) -> Result(BitArray, String) {
+fn encode_date(date: calendar.Date, ti: TypeInfo) -> Result(BitArray, String) {
+  use <- validate_typesend("date_send", ti)
+
   let gregorian_days =
     date_to_gregorian_days(
       date.year,
@@ -521,8 +573,10 @@ fn encode_date(date: calendar.Date, _ti: TypeInfo) -> Result(BitArray, String) {
 
 fn encode_time(
   tod: calendar.TimeOfDay,
-  _ti: TypeInfo,
+  ti: TypeInfo,
 ) -> Result(BitArray, String) {
+  use <- validate_typesend("time_send", ti)
+
   let usecs =
     duration.hours(tod.hours)
     |> duration.add(duration.minutes(tod.minutes))
@@ -535,8 +589,10 @@ fn encode_time(
 
 fn encode_interval(
   dur: duration.Duration,
-  _ti: TypeInfo,
+  ti: TypeInfo,
 ) -> Result(BitArray, String) {
+  use <- validate_typesend("interval_send", ti)
+
   let usecs = to_microseconds(dur, duration.to_seconds_and_nanoseconds)
 
   let encoded = <<
@@ -551,8 +607,10 @@ fn encode_interval(
 
 fn encode_timestamp(
   ts: timestamp.Timestamp,
-  _ti: TypeInfo,
+  ti: TypeInfo,
 ) -> Result(BitArray, String) {
+  use <- validate_typesend("timestamp_send", ti)
+
   let ts_int =
     unix_seconds_before_postgres_epoch()
     |> timestamp.add(ts, _)
@@ -564,8 +622,10 @@ fn encode_timestamp(
 fn encode_timestamptz(
   ts: timestamp.Timestamp,
   offset: Offset,
-  _ti: TypeInfo,
+  ti: TypeInfo,
 ) -> Result(BitArray, String) {
+  use <- validate_typesend("timestamptz_send", ti)
+
   let offset_dur = offset_to_duration(offset)
 
   let ts_int =

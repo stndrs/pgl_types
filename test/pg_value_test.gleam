@@ -459,6 +459,10 @@ pub fn array_error_test() {
 
 // Encode tests //
 
+pub fn encode_null_test() {
+  let assert Ok(_) = value.encode(value.null, int2())
+}
+
 pub fn encode_bool_test() {
   use valid <- list.map([#(value.true, 1), #(value.false, 0)])
 
@@ -468,6 +472,12 @@ pub fn encode_bool_test() {
   let assert Ok(out) = value.encode(in, bool())
 
   let assert True = expected == out
+}
+
+pub fn encode_bool_validation_error_test() {
+  let assert Error(msg) = value.encode(value.true, int2())
+
+  let assert True = msg == "Attempted to encode boolsend as int2send"
 }
 
 pub fn encode_int2_test() {
@@ -490,6 +500,12 @@ pub fn encode_int2_error_test() {
   let assert Error(msg) = value.encode(in, int2())
 
   let assert True = expected == msg
+}
+
+pub fn encode_int_validation_error_test() {
+  let assert Error(msg) = value.encode(value.int(33), float4())
+
+  let assert True = msg == "Attempted to encode 33 as float4send"
 }
 
 pub fn encode_int4_test() {
@@ -565,6 +581,12 @@ pub fn encode_float8_test() {
   let assert True = expected == out
 }
 
+pub fn encode_float_validation_error_test() {
+  let assert Error(msg) = value.encode(value.float(33.5), varchar())
+
+  let assert True = msg == "Unsupported float type"
+}
+
 pub fn encode_oid_test() {
   use valid <- list.map([0, 1042, 4_294_967_295])
 
@@ -598,6 +620,12 @@ pub fn encode_varchar_test() {
   let assert True = expected == out
 }
 
+pub fn encode_text_validation_error_test() {
+  let assert Error(msg) = value.encode(value.text("some text"), float4())
+
+  let assert True = msg == "Attempted to encode 'some text' as float4send"
+}
+
 pub fn encode_date_test() {
   let assert Ok(#(in, _tod)) =
     timestamp.parse_rfc3339("1970-01-01T00:00:00Z")
@@ -608,6 +636,16 @@ pub fn encode_date_test() {
   let assert Ok(out) = value.encode(value.date(in), date())
 
   let assert True = expected == out
+}
+
+pub fn encode_date_validation_error_test() {
+  let assert Error(msg) =
+    value.encode(
+      value.date(calendar.Date(2025, calendar.January, 10)),
+      float4(),
+    )
+
+  let assert True = msg == "Attempted to encode date_send as float4send"
 }
 
 pub fn encode_time_test() {
@@ -622,6 +660,13 @@ pub fn encode_time_test() {
   let assert True = expected == out
 }
 
+pub fn encode_time_validation_error_test() {
+  let assert Error(msg) =
+    value.encode(value.time(calendar.TimeOfDay(20, 10, 30, 0)), float4())
+
+  let assert True = msg == "Attempted to encode time_send as float4send"
+}
+
 pub fn encode_timestamp_test() {
   let ts = timestamp.from_unix_seconds(1)
 
@@ -631,6 +676,13 @@ pub fn encode_timestamp_test() {
   let assert Ok(out) = value.encode(in, timestamp())
 
   let assert True = expected == out
+}
+
+pub fn encode_timestamp_validation_error_test() {
+  let assert Error(msg) =
+    value.encode(value.timestamp(timestamp.system_time()), float4())
+
+  let assert True = msg == "Attempted to encode timestamp_send as float4send"
 }
 
 fn microseconds(count: Int) -> duration.Duration {
@@ -667,6 +719,13 @@ pub fn encode_interval_test() {
   let assert Ok(out) = value.encode(value.interval(usecs), interval())
 
   let assert True = expected == out
+}
+
+pub fn encode_interval_validation_error_test() {
+  let assert Error(msg) =
+    value.encode(value.interval(duration.hours(8)), float4())
+
+  let assert True = msg == "Attempted to encode interval_send as float4send"
 }
 
 pub fn encode_timestamptz_test() {
@@ -741,6 +800,16 @@ pub fn encode_negative_offset_timestamptz_test() {
   let assert Ok(out) = value.encode(in, timestamptz())
 
   let assert True = expected == out
+}
+
+pub fn encode_timestamptz_validation_error_test() {
+  let assert Error(msg) =
+    value.encode(
+      value.timestamptz(timestamp.system_time(), value.offset(8)),
+      float4(),
+    )
+
+  let assert True = msg == "Attempted to encode timestamptz_send as float4send"
 }
 
 pub fn empty_array_test() {
@@ -842,6 +911,13 @@ pub fn nested_array_test() {
   let assert Ok(out) = value.encode(in, array(array(int4())))
 
   let assert True = expected == out
+}
+
+pub fn encode_array_validation_error_test() {
+  let assert Error(msg) =
+    value.encode(value.array([10, 12], of: value.int), float4())
+
+  let assert True = msg == "Attempted to encode array_send as float4send"
 }
 
 // TypeInfo helpers
