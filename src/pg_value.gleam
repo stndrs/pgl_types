@@ -1,5 +1,8 @@
 //// PostgreSQL values, along with their encoders and decoders. Can
 //// be used by PostgreSQL client libraries written in gleam.
+//// Currently used by [pgl][1].
+////
+//// [1]: https://github.com/stndrs/pgl
 
 import gleam/bit_array
 import gleam/bool
@@ -13,9 +16,10 @@ import gleam/string
 import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
+import pg_value/interval
 
 /// `Offset` represents a UTC offset. `Timestamptz` is composed
-/// of a `timestamp.Timestamp` and `Offset`. The offset will be
+/// of a [`gleam/time/timestamp.Timestamp`][1] and `Offset`. The offset will be
 /// applied to the timestamp when being encoded.
 ///
 /// A timestamp with a positive offset represents some time in
@@ -23,8 +27,10 @@ import gleam/time/timestamp
 /// A timestamp with a negative offset represents some time in
 /// the past, relative to UTC.
 ///
-/// Offsets will be subtracted from the `timestamp.Timestamp`
+/// Offsets will be subtracted from the `gleam/time/timestamp.Timestamp`
 /// so the encoded value is a UTC timestamp.
+///
+/// [1]: https://hexdocs.pm/gleam_time/gleam/time/timestamp.html
 pub type Offset {
   Offset(hours: Int, minutes: Int)
 }
@@ -49,8 +55,8 @@ pub type Value {
   Time(calendar.TimeOfDay)
   Date(calendar.Date)
   Timestamp(timestamp.Timestamp)
-  Timestamptz(timestamp.Timestamp, offset: Offset)
-  Interval(duration.Duration)
+  Timestamptz(timestamp.Timestamp, Offset)
+  Interval(interval.Interval)
   Array(List(Value))
 }
 
@@ -96,8 +102,8 @@ pub fn timestamptz(ts: timestamp.Timestamp, offset: Offset) -> Value {
   Timestamptz(ts, offset)
 }
 
-pub fn interval(val: duration.Duration) -> Value {
-  Interval(val)
+pub fn interval(interval: interval.Interval) -> Value {
+  Interval(interval)
 }
 
 pub fn array(vals: List(a), of kind: fn(a) -> Value) -> Value {
@@ -137,7 +143,7 @@ pub fn to_string(val: Value) -> String {
     Date(val) -> date_to_string(val)
     Timestamp(val) -> timestamp_to_string(val)
     Timestamptz(ts, offset) -> timestamptz_to_string(ts, offset)
-    Interval(val) -> duration_to_string(val)
+    Interval(val) -> interval.to_iso8601_string(val)
     Array(vals) -> array_to_string(vals)
   }
 }
@@ -228,11 +234,6 @@ fn offset_to_duration(offset: Offset) -> duration.Duration {
   |> int.add(offset.minutes)
   |> int.multiply(sign)
   |> duration.minutes
-}
-
-fn duration_to_string(dur: duration.Duration) -> String {
-  duration.to_iso8601_string(dur)
-  |> single_quote
 }
 
 fn single_quote(val: String) -> String {
@@ -588,18 +589,20 @@ fn encode_time(
 }
 
 fn encode_interval(
-  dur: duration.Duration,
+  interval: interval.Interval,
   ti: TypeInfo,
 ) -> Result(BitArray, String) {
   use <- validate_typesend("interval_send", ti)
 
-  let usecs = to_microseconds(dur, duration.to_seconds_and_nanoseconds)
+  let interval.Interval(months:, days:, seconds:, microseconds:) = interval
+
+  let usecs = { seconds * usecs_per_sec } + microseconds
 
   let encoded = <<
     16:big-int-size(32),
     usecs:big-int-size(64),
-    0:big-int-size(32),
-    0:big-int-size(32),
+    days:big-int-size(32),
+    months:big-int-size(32),
   >>
 
   Ok(encoded)
@@ -639,7 +642,10 @@ fn encode_timestamptz(
 
 // ---------- Decoding ---------- //
 
-/// Decodes binary PostgreSQL data into a Dynamic value.
+/// Decodes binary PostgreSQL data into a Dynamic value. Dynamic values
+/// can then be decoded using [gleam/dynamic/decode][1].
+///
+/// [1]: https://hexdocs.pm/gleam_stdlib/gleam/dynamic/decode.html
 pub fn decode(val: BitArray, ti: TypeInfo) -> Result(Dynamic, String) {
   case ti.typereceive {
     "array_recv" ->
@@ -890,9 +896,16 @@ fn decode_interval(bits: BitArray) -> Result(Dynamic, String) {
   case bits {
     <<
       microseconds:big-signed-int-size(64),
-      _days:big-signed-int-size(32),
-      _months:big-signed-int-size(32),
-    >> -> Ok(dynamic.int(microseconds))
+      days:big-signed-int-size(32),
+      months:big-signed-int-size(32),
+    >> -> {
+      dynamic.array([
+        dynamic.int(months),
+        dynamic.int(days),
+        dynamic.int(microseconds),
+      ])
+      |> Ok
+    }
     _ -> Error("invalid interval")
   }
 }
