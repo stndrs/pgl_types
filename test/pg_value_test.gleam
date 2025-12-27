@@ -19,101 +19,100 @@ pub fn main() -> Nil {
 // Value tests
 
 pub fn null_to_string_test() {
-  let assert "NULL" = value.null |> value.to_string
+  assert "NULL" == value.null |> value.to_string
 }
 
 pub fn bool_to_string_test() {
-  let assert "TRUE" = value.bool(True) |> value.to_string
-  let assert "FALSE" = value.bool(False) |> value.to_string
+  assert "TRUE" == value.bool(True) |> value.to_string
+  assert "FALSE" == value.bool(False) |> value.to_string
 }
 
 pub fn int_to_string_test() {
-  let assert "42" = value.int(42) |> value.to_string
-  let assert "0" = value.int(0) |> value.to_string
-  let assert "-123" = value.int(-123) |> value.to_string
+  assert "42" == value.int(42) |> value.to_string
+  assert "0" == value.int(0) |> value.to_string
+  assert "-123" == value.int(-123) |> value.to_string
 }
 
 pub fn float_to_string_test() {
-  let assert "3.14" = value.float(3.14) |> value.to_string
-  let assert "0.0" = value.float(0.0) |> value.to_string
-  let assert "-2.5" = value.float(-2.5) |> value.to_string
+  assert "3.14" == value.float(3.14) |> value.to_string
+  assert "0.0" == value.float(0.0) |> value.to_string
+  assert "-2.5" == value.float(-2.5) |> value.to_string
 }
 
 pub fn text_to_string_test() {
-  let assert "'hello'" = value.text("hello") |> value.to_string
-  let assert "''" = value.text("") |> value.to_string
-  let assert "'It\\'s working'" = value.text("It's working") |> value.to_string
-  let assert "'Say \\'hello\\''" = value.text("Say 'hello'") |> value.to_string
+  assert "'hello'" == value.text("hello") |> value.to_string
+  assert "''" == value.text("") |> value.to_string
+  assert "'It\\'s working'" == value.text("It's working") |> value.to_string
+  assert "'Say \\'hello\\''" == value.text("Say 'hello'") |> value.to_string
 }
 
 pub fn bytea_to_string_test() {
-  let assert "'\\x48656C6C6F'" =
-    value.bytea(<<"Hello":utf8>>) |> value.to_string
-  let assert "'\\x'" = value.bytea(<<>>) |> value.to_string
-  let assert "'\\xDEADBEEF'" =
-    value.bytea(<<0xDE, 0xAD, 0xBE, 0xEF>>) |> value.to_string
+  assert "'\\x48656C6C6F'" == value.bytea(<<"Hello":utf8>>) |> value.to_string
+  assert "'\\x'" == value.bytea(<<>>) |> value.to_string
+  assert "'\\xDEADBEEF'"
+    == value.bytea(<<0xDE, 0xAD, 0xBE, 0xEF>>) |> value.to_string
 }
 
 pub fn time_to_string_test() {
-  let assert "'14:30:45'" =
-    value.time(calendar.TimeOfDay(14, 30, 45, 0)) |> value.to_string
-  let assert "'00:00:00'" =
-    value.time(calendar.TimeOfDay(0, 0, 0, 0)) |> value.to_string
-  let assert "'23:59:59.123'" =
-    value.time(calendar.TimeOfDay(23, 59, 59, 123_456_000))
+  assert "'14:30:45'"
+    == value.time(calendar.TimeOfDay(14, 30, 45, 0)) |> value.to_string
+  assert "'00:00:00'"
+    == value.time(calendar.TimeOfDay(0, 0, 0, 0)) |> value.to_string
+  assert "'23:59:59.123'"
+    == value.time(calendar.TimeOfDay(23, 59, 59, 123_456_000))
     |> value.to_string
-  let assert "'09:05:03'" =
-    value.time(calendar.TimeOfDay(9, 5, 3, 0)) |> value.to_string
-  let assert "'09:05:03.400'" =
-    value.time(calendar.TimeOfDay(9, 5, 3, 400_000_000))
+  assert "'09:05:03'"
+    == value.time(calendar.TimeOfDay(9, 5, 3, 0)) |> value.to_string
+  assert "'09:05:03.400'"
+    == value.time(calendar.TimeOfDay(9, 5, 3, 400_000_000))
     |> value.to_string
-  let assert "'09:05:03.012'" =
-    value.time(calendar.TimeOfDay(9, 5, 3, 12_000_000)) |> value.to_string
-  let assert "'09:05:03.007'" =
-    value.time(calendar.TimeOfDay(9, 5, 3, 7_000_000)) |> value.to_string
+  assert "'09:05:03.012'"
+    == value.time(calendar.TimeOfDay(9, 5, 3, 12_000_000)) |> value.to_string
+  assert "'09:05:03.007'"
+    == value.time(calendar.TimeOfDay(9, 5, 3, 7_000_000)) |> value.to_string
 }
 
 pub fn date_to_string_test() {
-  let assert "'2025-01-15'" =
-    value.date(calendar.Date(2025, calendar.January, 15))
+  assert "'2025-01-15'"
+    == value.date(calendar.Date(2025, calendar.January, 15))
     |> value.to_string
-  let assert "'1990-02-09'" =
-    value.date(calendar.Date(1990, calendar.February, 9))
+  assert "'1990-02-09'"
+    == value.date(calendar.Date(1990, calendar.February, 9))
     |> value.to_string
-  let assert "'2000-12-31'" =
-    value.date(calendar.Date(2000, calendar.December, 31))
+  assert "'2000-12-31'"
+    == value.date(calendar.Date(2000, calendar.December, 31))
     |> value.to_string
 }
 
 pub fn timestamp_to_string_test() {
   let assert Ok(ts) = timestamp.parse_rfc3339("2025-01-15T14:30:45Z")
-  let assert "'2025-01-15T14:30:45Z'" = value.timestamp(ts) |> value.to_string
+  assert "'2025-01-15T14:30:45Z'" == value.timestamp(ts) |> value.to_string
 
   let assert Ok(ts2) = timestamp.parse_rfc3339("2000-12-31T23:59:59.123456789Z")
-  let assert "'2000-12-31T23:59:59.123456789Z'" =
-    value.timestamp(ts2) |> value.to_string
+  assert "'2000-12-31T23:59:59.123456789Z'"
+    == value.timestamp(ts2) |> value.to_string
 }
 
 pub fn timestamptz_to_string_test() {
   let assert Ok(ts) = timestamp.parse_rfc3339("2025-01-15T14:30:45Z")
   let offset = value.offset(0)
 
-  let assert "'2025-01-15T14:30:45Z'" =
-    value.timestamptz(ts, offset) |> value.to_string
+  assert "'2025-01-15T14:30:45Z'"
+    == value.timestamptz(ts, offset) |> value.to_string
 
   let assert Ok(ts2) = timestamp.parse_rfc3339("2000-12-31T23:59:59.123456789Z")
   let offset = value.offset(0)
 
-  let assert "'2000-12-31T23:59:59.123456789Z'" =
-    value.timestamptz(ts2, offset) |> value.to_string
+  assert "'2000-12-31T23:59:59.123456789Z'"
+    == value.timestamptz(ts2, offset) |> value.to_string
 }
 
 pub fn timestamptz_with_positive_offset_to_string_test() {
   let assert Ok(ts) = timestamp.parse_rfc3339("2025-01-15T14:30:45Z")
   let offset = value.offset(10) |> value.minutes(30)
 
-  let assert "'2025-01-15T04:00:45Z'" =
-    value.timestamptz(ts, offset) |> value.to_string
+  assert "'2025-01-15T04:00:45Z'"
+    == value.timestamptz(ts, offset) |> value.to_string
 }
 
 pub fn timestamptz_with_negative_offset_to_string_test() {
@@ -122,23 +121,23 @@ pub fn timestamptz_with_negative_offset_to_string_test() {
     value.offset(-6)
     |> value.minutes(30)
 
-  let assert "'2025-01-15T21:00:45Z'" =
-    value.timestamptz(ts, offset) |> value.to_string
+  assert "'2025-01-15T21:00:45Z'"
+    == value.timestamptz(ts, offset) |> value.to_string
 }
 
 pub fn interval_to_string_test() {
-  let assert "'P1DT300S'" =
-    interval.Interval(months: 0, days: 1, seconds: 300, microseconds: 0)
+  assert "'P1DT300S'"
+    == interval.Interval(months: 0, days: 1, seconds: 300, microseconds: 0)
     |> value.interval
     |> value.to_string
 
-  let assert "'PT0S'" =
-    interval.seconds(0)
+  assert "'PT0S'"
+    == interval.seconds(0)
     |> value.interval
     |> value.to_string
 
-  let assert "'P5MT30S'" =
-    interval.months(5)
+  assert "'P5MT30S'"
+    == interval.months(5)
     |> interval.add(interval.seconds(30))
     |> value.interval
     |> value.to_string
@@ -165,7 +164,7 @@ pub fn decode_timestamp_test() {
   let out = dynamic.int(1_000_000)
 
   let assert Ok(ts) = value.decode(in, timestamp())
-  let assert True = out == ts
+  assert out == ts
 }
 
 pub fn decode_timestamp_pos_infinity_test() {
@@ -174,7 +173,7 @@ pub fn decode_timestamp_pos_infinity_test() {
 
   let assert Ok(ts) = value.decode(in, timestamp())
 
-  let assert True = out == ts
+  assert out == ts
 }
 
 pub fn decode_timestamp_neg_infinity_test() {
@@ -183,7 +182,7 @@ pub fn decode_timestamp_neg_infinity_test() {
 
   let assert Ok(ts) = value.decode(in, timestamp())
 
-  let assert True = out == ts
+  assert out == ts
 }
 
 pub fn decode_oid_test() {
@@ -194,7 +193,7 @@ pub fn decode_oid_test() {
 
   let assert Ok(result) = value.decode(in, oid())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_bool_test() {
@@ -205,7 +204,7 @@ pub fn decode_bool_test() {
 
   let assert Ok(result) = value.decode(in, bool())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_int2_test() {
@@ -216,7 +215,7 @@ pub fn decode_int2_test() {
 
   let assert Ok(result) = value.decode(in, int2())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_int2_error_test() {
@@ -225,7 +224,7 @@ pub fn decode_int2_error_test() {
 
   let assert Error(msg) = value.decode(in, int2())
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 pub fn decode_int4_test() {
@@ -236,7 +235,7 @@ pub fn decode_int4_test() {
 
   let assert Ok(result) = value.decode(in, int4())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_int4_error_test() {
@@ -245,7 +244,7 @@ pub fn decode_int4_error_test() {
 
   let assert Error(msg) = value.decode(in, int4())
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 pub fn decode_int8_test() {
@@ -260,7 +259,7 @@ pub fn decode_int8_test() {
 
   let assert Ok(result) = value.decode(in, int8())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_int8_error_test() {
@@ -269,7 +268,7 @@ pub fn decode_int8_error_test() {
 
   let assert Error(msg) = value.decode(in, int8())
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 pub fn decode_float4_test() {
@@ -280,7 +279,7 @@ pub fn decode_float4_test() {
 
   let assert Ok(result) = value.decode(in, float4())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_float4_error_test() {
@@ -289,7 +288,7 @@ pub fn decode_float4_error_test() {
 
   let assert Error(msg) = value.decode(in, float4())
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 pub fn decode_float8_test() {
@@ -300,7 +299,7 @@ pub fn decode_float8_test() {
 
   let assert Ok(result) = value.decode(in, float8())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_float8_error_test() {
@@ -309,7 +308,7 @@ pub fn decode_float8_error_test() {
 
   let assert Error(msg) = value.decode(in, float8())
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 pub fn decode_varchar_test() {
@@ -320,7 +319,7 @@ pub fn decode_varchar_test() {
 
   let assert Ok(result) = value.decode(in, varchar())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_varchar_error_test() {
@@ -329,7 +328,7 @@ pub fn decode_varchar_error_test() {
 
   let assert Error(msg) = value.decode(in, varchar())
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 pub fn decode_text_test() {
@@ -340,7 +339,7 @@ pub fn decode_text_test() {
 
   let assert Ok(result) = value.decode(in, text())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_text_error_test() {
@@ -349,7 +348,7 @@ pub fn decode_text_error_test() {
 
   let assert Error(msg) = value.decode(in, text())
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 pub fn decode_bytea_test() {
@@ -360,7 +359,7 @@ pub fn decode_bytea_test() {
 
   let assert Ok(result) = value.decode(in, bytea())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_char_test() {
@@ -371,7 +370,7 @@ pub fn decode_char_test() {
 
   let assert Ok(result) = value.decode(in, char())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_name_test() {
@@ -382,7 +381,7 @@ pub fn decode_name_test() {
 
   let assert Ok(result) = value.decode(in, name())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_time_test() {
@@ -420,7 +419,7 @@ pub fn decode_time_test() {
 
   let assert Ok(result) = value.decode(in, time())
 
-  let assert True = expected == result
+  assert expected == result
 }
 
 pub fn decode_time_error_test() {
@@ -429,7 +428,7 @@ pub fn decode_time_error_test() {
 
   let assert Error(msg) = value.decode(in, time())
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 pub fn decode_date_test() {
@@ -444,7 +443,7 @@ pub fn decode_date_test() {
 
   let assert Ok(result) = value.decode(in, date())
 
-  let assert True = out == result
+  assert out == result
 }
 
 pub fn decode_date_error_test() {
@@ -453,7 +452,7 @@ pub fn decode_date_error_test() {
 
   let assert Error(msg) = value.decode(in, date())
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 pub fn array_error_test() {
@@ -462,13 +461,15 @@ pub fn array_error_test() {
 
   let assert Error(msg) = value.decode(in, array(int2()))
 
-  let assert True = out == msg
+  assert out == msg
 }
 
 // Encode tests //
 
 pub fn encode_null_test() {
-  let assert Ok(_) = value.encode(value.null, int2())
+  let assert Ok(encoded) = value.encode(value.null, int2())
+
+  assert <<-1:int-size(32)>> == encoded
 }
 
 pub fn encode_bool_test() {
@@ -479,13 +480,13 @@ pub fn encode_bool_test() {
 
   let assert Ok(out) = value.encode(in, bool())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_bool_validation_error_test() {
   let assert Error(msg) = value.encode(value.true, int2())
 
-  let assert True = msg == "Attempted to encode boolsend as int2send"
+  assert msg == "Attempted to encode boolsend as int2send"
 }
 
 pub fn encode_int2_test() {
@@ -496,7 +497,7 @@ pub fn encode_int2_test() {
 
   let assert Ok(out) = value.encode(in, int2())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_int2_error_test() {
@@ -507,13 +508,13 @@ pub fn encode_int2_error_test() {
 
   let assert Error(msg) = value.encode(in, int2())
 
-  let assert True = expected == msg
+  assert expected == msg
 }
 
 pub fn encode_int_validation_error_test() {
   let assert Error(msg) = value.encode(value.int(33), float4())
 
-  let assert True = msg == "Attempted to encode 33 as float4send"
+  assert msg == "Attempted to encode 33 as float4send"
 }
 
 pub fn encode_int4_test() {
@@ -524,7 +525,7 @@ pub fn encode_int4_test() {
 
   let assert Ok(out) = value.encode(in, int4())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_int4_error_test() {
@@ -535,7 +536,7 @@ pub fn encode_int4_error_test() {
 
   let assert Error(msg) = value.encode(in, int4())
 
-  let assert True = expected == msg
+  assert expected == msg
 }
 
 pub fn encode_int8_test() {
@@ -550,7 +551,7 @@ pub fn encode_int8_test() {
 
   let assert Ok(out) = value.encode(in, int8())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_int8_error_test() {
@@ -564,7 +565,7 @@ pub fn encode_int8_error_test() {
 
   let assert Error(msg) = value.encode(in, int8())
 
-  let assert True = expected == msg
+  assert expected == msg
 }
 
 pub fn encode_float4_test() {
@@ -575,7 +576,7 @@ pub fn encode_float4_test() {
 
   let assert Ok(out) = value.encode(in, float4())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_float8_test() {
@@ -586,13 +587,13 @@ pub fn encode_float8_test() {
 
   let assert Ok(out) = value.encode(in, float8())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_float_validation_error_test() {
   let assert Error(msg) = value.encode(value.float(33.5), varchar())
 
-  let assert True = msg == "Unsupported float type"
+  assert msg == "Unsupported float type"
 }
 
 pub fn encode_oid_test() {
@@ -603,7 +604,7 @@ pub fn encode_oid_test() {
 
   let assert Ok(out) = value.encode(in, oid())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_oid_error_test() {
@@ -614,7 +615,7 @@ pub fn encode_oid_error_test() {
 
   let assert Error(msg) = value.encode(in, oid())
 
-  let assert True = expected == msg
+  assert expected == msg
 }
 
 pub fn encode_varchar_test() {
@@ -625,13 +626,13 @@ pub fn encode_varchar_test() {
 
   let assert Ok(out) = value.encode(in, varchar())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_text_validation_error_test() {
   let assert Error(msg) = value.encode(value.text("some text"), float4())
 
-  let assert True = msg == "Attempted to encode 'some text' as float4send"
+  assert msg == "Attempted to encode 'some text' as float4send"
 }
 
 pub fn encode_date_test() {
@@ -643,17 +644,15 @@ pub fn encode_date_test() {
 
   let assert Ok(out) = value.encode(value.date(in), date())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_date_validation_error_test() {
   let assert Error(msg) =
-    value.encode(
-      value.date(calendar.Date(2025, calendar.January, 10)),
-      float4(),
-    )
+    value.date(calendar.Date(2025, calendar.January, 10))
+    |> value.encode(float4())
 
-  let assert True = msg == "Attempted to encode date_send as float4send"
+  assert msg == "Attempted to encode date_send as float4send"
 }
 
 pub fn encode_time_test() {
@@ -665,14 +664,14 @@ pub fn encode_time_test() {
 
   let assert Ok(out) = value.encode(in, time())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_time_validation_error_test() {
   let assert Error(msg) =
     value.encode(value.time(calendar.TimeOfDay(20, 10, 30, 0)), float4())
 
-  let assert True = msg == "Attempted to encode time_send as float4send"
+  assert msg == "Attempted to encode time_send as float4send"
 }
 
 pub fn encode_timestamp_test() {
@@ -683,14 +682,14 @@ pub fn encode_timestamp_test() {
 
   let assert Ok(out) = value.encode(in, timestamp())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_timestamp_validation_error_test() {
   let assert Error(msg) =
     value.encode(value.timestamp(timestamp.system_time()), float4())
 
-  let assert True = msg == "Attempted to encode timestamp_send as float4send"
+  assert msg == "Attempted to encode timestamp_send as float4send"
 }
 
 fn to_microseconds(
@@ -717,7 +716,7 @@ pub fn encode_interval_test() {
 
   let assert Ok(out) = value.encode(val, interval())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_interval_validation_error_test() {
@@ -725,7 +724,7 @@ pub fn encode_interval_validation_error_test() {
 
   let assert Error(msg) = value.encode(val, float4())
 
-  let assert True = msg == "Attempted to encode interval_send as float4send"
+  assert msg == "Attempted to encode interval_send as float4send"
 }
 
 pub fn encode_timestamptz_test() {
@@ -742,7 +741,7 @@ pub fn encode_timestamptz_test() {
 
   let assert Ok(out) = value.encode(in, timestamptz())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_positive_offset_timestamptz_test() {
@@ -770,7 +769,7 @@ pub fn encode_positive_offset_timestamptz_test() {
 
   let assert Ok(out) = value.encode(in, timestamptz())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_negative_offset_timestamptz_test() {
@@ -799,17 +798,15 @@ pub fn encode_negative_offset_timestamptz_test() {
 
   let assert Ok(out) = value.encode(in, timestamptz())
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_timestamptz_validation_error_test() {
   let assert Error(msg) =
-    value.encode(
-      value.timestamptz(timestamp.system_time(), value.offset(8)),
-      float4(),
-    )
+    value.timestamptz(timestamp.system_time(), value.offset(8))
+    |> value.encode(float4())
 
-  let assert True = msg == "Attempted to encode timestamptz_send as float4send"
+  assert msg == "Attempted to encode timestamptz_send as float4send"
 }
 
 pub fn empty_array_test() {
@@ -821,7 +818,7 @@ pub fn empty_array_test() {
   let assert Ok(out) =
     value.encode(value.array([], of: value.int), array(int2()))
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn string_array_test() {
@@ -835,7 +832,7 @@ pub fn string_array_test() {
 
   let assert Ok(out) = value.encode(in, array(text()))
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn int_array_test() {
@@ -848,7 +845,7 @@ pub fn int_array_test() {
 
   let assert Ok(out) = value.encode(in, array(int4()))
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn null_array_test() {
@@ -862,7 +859,7 @@ pub fn null_array_test() {
 
   let assert Ok(out) = value.encode(in, array(int4()))
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn nested_array_test() {
@@ -910,14 +907,14 @@ pub fn nested_array_test() {
 
   let assert Ok(out) = value.encode(in, array(array(int4())))
 
-  let assert True = expected == out
+  assert expected == out
 }
 
 pub fn encode_array_validation_error_test() {
   let assert Error(msg) =
     value.encode(value.array([10, 12], of: value.int), float4())
 
-  let assert True = msg == "Attempted to encode array_send as float4send"
+  assert msg == "Attempted to encode array_send as float4send"
 }
 
 // TypeInfo helpers

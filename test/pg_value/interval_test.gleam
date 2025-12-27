@@ -12,26 +12,26 @@ pub fn add_test() {
 
   let sum = interval.add(left, right)
 
-  let assert 5 = sum.months
-  let assert 10 = sum.days
-  let assert 50 = sum.seconds
-  let assert 4000 = sum.microseconds
+  assert 5 == sum.months
+  assert 10 == sum.days
+  assert 50 == sum.seconds
+  assert 4000 == sum.microseconds
 }
 
 pub fn empty_interval_to_iso8601_string_test() {
-  let assert "PT0S" = interval.seconds(0) |> interval.to_iso8601_string
+  assert "PT0S" == interval.seconds(0) |> interval.to_iso8601_string
 }
 
 pub fn months_interval_to_iso8601_string_test() {
-  let assert "P3M" = interval.months(3) |> interval.to_iso8601_string
+  assert "P3M" == interval.months(3) |> interval.to_iso8601_string
 }
 
 pub fn days_interval_to_iso8601_string_test() {
-  let assert "P7D" = interval.days(7) |> interval.to_iso8601_string
+  assert "P7D" == interval.days(7) |> interval.to_iso8601_string
 }
 
 pub fn seconds_interval_to_iso8601_string_test() {
-  let assert "PT30S" = interval.seconds(30) |> interval.to_iso8601_string
+  assert "PT30S" == interval.seconds(30) |> interval.to_iso8601_string
 }
 
 pub fn microseconds_interval_to_iso8601_string_test() {
@@ -48,12 +48,12 @@ pub fn microseconds_interval_to_iso8601_string_test() {
 
   let iso8601 = interval.microseconds(usecs) |> interval.to_iso8601_string
 
-  let assert True = expected == iso8601
+  assert expected == iso8601
 }
 
 pub fn interval_to_iso8601_string_test() {
-  let assert "P3M7DT30.2S" =
-    interval.Interval(months: 3, days: 7, seconds: 30, microseconds: 200_000)
+  assert "P3M7DT30.2S"
+    == interval.Interval(months: 3, days: 7, seconds: 30, microseconds: 200_000)
     |> interval.to_iso8601_string
 }
 
@@ -77,7 +77,7 @@ pub fn decoder_test() {
     |> interval_to_dynamic
     |> decode.run(interval.decoder())
   }
-  let assert True = cases == decoded
+  assert cases == decoded
 }
 
 fn interval_to_dynamic(val: interval.Interval) {
