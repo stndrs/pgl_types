@@ -53,6 +53,22 @@ pub fn bytea_to_string_test() {
     == value.bytea(<<0xDE, 0xAD, 0xBE, 0xEF>>) |> value.to_string
 }
 
+pub fn uuid_v4_to_string_test() {
+  let v4_uuid = 0x85eab1c37acc4d8288e45fc1a9daa9d8
+
+  let uuid = value.uuid(<<v4_uuid:big-int-size(128)>>)
+
+  assert "85eab1c3-7acc-4d82-88e4-5fc1a9daa9d8" == value.to_string(uuid)
+}
+
+pub fn uuid_v7_to_string_test() {
+  let v7_uuid = 0x019c39ce0a5a7dcabfaf8d79ed0db096
+
+  let uuid = value.uuid(<<v7_uuid:big-int-size(128)>>)
+
+  assert "019c39ce-0a5a-7dca-bfaf-8d79ed0db096" == value.to_string(uuid)
+}
+
 pub fn time_to_string_test() {
   assert "'14:30:45'"
     == value.time(calendar.TimeOfDay(14, 30, 45, 0)) |> value.to_string
@@ -384,6 +400,17 @@ pub fn decode_name_test() {
   assert out == result
 }
 
+pub fn decode_uuid_test() {
+  let v4_uuid = 0x85eab1c37acc4d8288e45fc1a9daa9d8
+
+  let in = <<v4_uuid:big-int-size(128)>>
+  let out = dynamic.bit_array(in)
+
+  let assert Ok(result) = value.decode(in, uuid())
+
+  assert out == result
+}
+
 pub fn decode_time_test() {
   use #(microseconds, expected) <- list.map([
     #(
@@ -633,6 +660,23 @@ pub fn encode_text_validation_error_test() {
   let assert Error(msg) = value.encode(value.text("some text"), float4())
 
   assert msg == "Attempted to encode 'some text' as float4send"
+}
+
+pub fn encode_uuid_test() {
+  let v4_uuid = 0x85eab1c37acc4d8288e45fc1a9daa9d8
+
+  let value = value.uuid(<<v4_uuid:big-int-size(128)>>)
+  let expected = <<16:big-int-size(32), v4_uuid:big-int-size(128)>>
+
+  let assert Ok(encoded) = value.encode(value, uuid())
+
+  assert expected == encoded
+}
+
+pub fn encode_uuid_error_test() {
+  let value = value.uuid(<<"invalid":utf8>>)
+
+  let assert Error("Invalid UUID") = value.encode(value, uuid())
 }
 
 pub fn encode_date_test() {
@@ -989,6 +1033,12 @@ fn name() {
   type_info.new(19)
   |> type_info.typesend("namesend")
   |> type_info.typereceive("namerecv")
+}
+
+fn uuid() {
+  type_info.new(2950)
+  |> type_info.typesend("uuid_send")
+  |> type_info.typereceive("uuid_recv")
 }
 
 fn time() {
