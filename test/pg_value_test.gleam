@@ -1,8 +1,10 @@
+import gleam/dict
 import gleam/dynamic
+import gleam/dynamic/decode
 import gleam/function
 import gleam/int
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/time/calendar
 import gleam/time/duration
@@ -67,6 +69,35 @@ pub fn uuid_v7_to_string_test() {
   let uuid = value.uuid(<<v7_uuid:big-int-size(128)>>)
 
   assert "019c39ce-0a5a-7dca-bfaf-8d79ed0db096" == value.to_string(uuid)
+}
+
+pub fn hstore_to_string_test() {
+  let hstore =
+    dict.new()
+    |> dict.insert("first", Some("foo"))
+    |> dict.insert("second", Some("bar"))
+    |> dict.insert("third", None)
+    |> value.hstore
+
+  assert "'first=>foo, second=>bar, third=>NULL'" == value.to_string(hstore)
+}
+
+pub fn hstore_quote_escape_test() {
+  let single_quote =
+    dict.new()
+    |> dict.insert("single'", Some("'quote"))
+    |> value.hstore
+
+  assert "'single''=>''quote'" == value.to_string(single_quote)
+}
+
+pub fn hstore_backslash_escape_test() {
+  let backslash =
+    dict.new()
+    |> dict.insert("back\\", Some("\\slash"))
+    |> value.hstore
+
+  assert "'back\\\\=>\\\\slash'" == value.to_string(backslash)
 }
 
 pub fn time_to_string_test() {
@@ -411,6 +442,26 @@ pub fn decode_uuid_test() {
   assert out == result
 }
 
+pub fn decode_hstore_test() {
+  let data =
+    dict.new()
+    |> dict.insert("first", Some("foo"))
+    |> dict.insert("second", Some("bar"))
+    |> dict.insert("third", None)
+
+  let value = value.hstore(data)
+
+  let assert Ok(<<50:big-int-size(32), rest:bits>>) =
+    value.encode(value, hstore())
+
+  let assert Ok(out) = value.decode(rest, hstore())
+
+  let assert Ok(decoded) =
+    decode.run(out, decode.dict(decode.string, decode.optional(decode.string)))
+
+  assert data == decoded
+}
+
 pub fn decode_time_test() {
   use #(microseconds, expected) <- list.map([
     #(
@@ -677,6 +728,35 @@ pub fn encode_uuid_error_test() {
   let value = value.uuid(<<"invalid":utf8>>)
 
   let assert Error("Invalid UUID") = value.encode(value, uuid())
+}
+
+pub fn encode_hstore_test() {
+  let value =
+    dict.new()
+    |> dict.insert("first", Some("foo"))
+    |> dict.insert("second", Some("bar"))
+    |> dict.insert("third", None)
+    |> value.hstore
+
+  let expected = <<
+    50:big-int-size(32),
+    3:big-int-size(32),
+    5:big-int-size(32),
+    "first":utf8,
+    3:big-int-size(32),
+    "foo":utf8,
+    6:big-int-size(32),
+    "second":utf8,
+    3:big-int-size(32),
+    "bar":utf8,
+    5:big-int-size(32),
+    "third":utf8,
+    -1:big-int-size(32),
+  >>
+
+  let assert Ok(encoded) = value.encode(value, hstore())
+
+  assert expected == encoded
 }
 
 pub fn encode_date_test() {
@@ -1039,6 +1119,12 @@ fn uuid() {
   type_info.new(2950)
   |> type_info.typesend("uuid_send")
   |> type_info.typereceive("uuid_recv")
+}
+
+fn hstore() {
+  type_info.new(18_600)
+  |> type_info.typesend("hstore_send")
+  |> type_info.typereceive("hstore_recv")
 }
 
 fn time() {

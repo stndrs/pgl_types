@@ -6,6 +6,7 @@
 
 import gleam/bit_array
 import gleam/bool
+import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/float
 import gleam/int
@@ -65,6 +66,7 @@ pub type Value {
   Interval(interval.Interval)
   Array(List(Value))
   Uuid(BitArray)
+  Hstore(Dict(String, Option(String)))
 }
 
 pub const null = Null
@@ -97,6 +99,10 @@ pub fn bytea(bytea: BitArray) -> Value {
 /// value is a valid UUID. If the value is not a valid UUID, encoding will fail.
 pub fn uuid(uuid: BitArray) -> Value {
   Uuid(uuid)
+}
+
+pub fn hstore(hstore: Dict(String, Option(String))) -> Value {
+  Hstore(hstore)
 }
 
 pub fn time(time_of_day: calendar.TimeOfDay) -> Value {
@@ -159,7 +165,33 @@ pub fn to_string(value: Value) -> String {
     Interval(val) -> interval.to_iso8601_string(val) |> single_quote
     Array(vals) -> array_to_string(vals)
     Uuid(val) -> uuid_to_string(val)
+    Hstore(val) -> hstore_to_string(val)
   }
+}
+
+fn hstore_to_string(hstore: Dict(String, Option(String))) -> String {
+  hstore
+  |> dict.to_list
+  |> list.map(with: fn(key_val) {
+    let #(key, val) = key_val
+    let key = escape(key)
+
+    let val = case val {
+      Some(val) -> escape(val)
+      None -> "NULL"
+    }
+
+    key <> "=>" <> val
+  })
+  |> string.join(", ")
+  |> single_quote
+}
+
+fn escape(str: String) -> String {
+  str
+  |> string.replace(each: "\\", with: "\\\\")
+  |> string.replace(each: "\"", with: "\\\"")
+  |> string.replace(each: "'", with: "''")
 }
 
 fn uuid_to_string(uuid: BitArray) -> String {
@@ -309,6 +341,7 @@ pub fn encode(
     Interval(val) -> encode_interval(val, info)
     Array(val) -> encode_array(val, info)
     Uuid(val) -> encode_uuid(val, info)
+    Hstore(val) -> encode_hstore(val, info)
   }
 }
 
@@ -333,6 +366,52 @@ fn encode_uuid(
       Ok(<<16:big-int-size(32), uuid:big-int-size(128)>>)
     _ -> Error("Invalid UUID")
   }
+}
+
+fn encode_hstore(
+  hstore: Dict(String, Option(String)),
+  info: type_info.TypeInfo,
+) -> Result(BitArray, String) {
+  use <- validate_typesend("hstore_send", info)
+
+  use encoded <- result.map(do_encode_hstore(hstore))
+
+  let size = bit_array.byte_size(encoded)
+
+  <<size:big-int-size(32), encoded:bits>>
+}
+
+fn do_encode_hstore(
+  hstore: Dict(String, Option(String)),
+) -> Result(BitArray, String) {
+  let encoded =
+    hstore
+    |> dict.to_list
+    |> list.fold(<<>>, fn(acc, key_val) {
+      let encoded_key =
+        key_val.0
+        |> bit_array.from_string
+
+      let key_size = bit_array.byte_size(encoded_key)
+
+      let encoded_value = case key_val.1 {
+        Some(val) -> {
+          let encoded_val = bit_array.from_string(val)
+          let val_size = bit_array.byte_size(encoded_val)
+
+          <<val_size:big-int-size(32), encoded_val:bits>>
+        }
+        None -> <<-1:big-int-size(32)>>
+      }
+
+      acc
+      |> bit_array.append(<<key_size:big-int-size(32), encoded_key:bits>>)
+      |> bit_array.append(encoded_value)
+    })
+
+  let size = dict.size(hstore)
+
+  Ok(<<size:big-int-size(32), encoded:bits>>)
 }
 
 fn encode_array(
@@ -656,6 +735,7 @@ pub fn decode(
     "charrecv" -> decode_text(bits)
     "bytearecv" -> decode_bytea(bits)
     "uuid_recv" -> decode_uuid(bits)
+    "hstore_recv" -> decode_hstore(bits)
     "time_recv" -> decode_time(bits)
     "date_recv" -> decode_date(bits)
     "timestamp_recv" -> decode_timestamp(bits)
@@ -818,6 +898,73 @@ fn decode_uuid(bits: BitArray) -> Result(Dynamic, String) {
   case bits {
     <<_uuid:big-int-size(128)>> -> Ok(dynamic.bit_array(bits))
     _ -> Error("invalid uuid")
+  }
+}
+
+fn decode_hstore(bits: BitArray) -> Result(Dynamic, String) {
+  case bits {
+    <<size:big-int-size(32), rest:bits>> -> {
+      do_decode_hstore(size, rest, dict.new())
+      |> result.map(fn(hstore) {
+        hstore
+        |> dict.to_list
+        |> list.map(fn(key_val) {
+          let key = dynamic.string(key_val.0)
+          let val = case key_val.1 {
+            Some(val) -> dynamic.string(val)
+            None -> dynamic.nil()
+          }
+
+          #(key, val)
+        })
+        |> dynamic.properties
+      })
+      |> result.replace_error("invalid hstore")
+    }
+    _ -> Error("invalid hstore")
+  }
+}
+
+fn do_decode_hstore(
+  size: Int,
+  bits: BitArray,
+  acc: Dict(String, Option(String)),
+) -> Result(Dict(String, Option(String)), Nil) {
+  case size, bits {
+    0, <<>> -> Ok(acc)
+    size, bits1 -> {
+      use #(key, rest) <- result.try(decode_hstore_key(bits1))
+      use #(val, rest1) <- result.try(decode_hstore_value(rest))
+
+      let acc = acc |> dict.insert(key, val)
+
+      do_decode_hstore(size - 1, rest1, acc)
+    }
+  }
+}
+
+fn decode_hstore_key(bits: BitArray) -> Result(#(String, BitArray), Nil) {
+  case bits {
+    <<key_len:big-int-size(32), key:bytes-size(key_len), rest:bits>> -> {
+      use key <- result.map(bit_array.to_string(key))
+
+      #(key, rest)
+    }
+    _ -> Error(Nil)
+  }
+}
+
+fn decode_hstore_value(
+  bits: BitArray,
+) -> Result(#(Option(String), BitArray), Nil) {
+  case bits {
+    <<-1:big-signed-int-size(32), rest:bits>> -> Ok(#(None, rest))
+    <<val_len:big-int-size(32), val:bytes-size(val_len), rest:bits>> -> {
+      use val <- result.map(bit_array.to_string(val))
+
+      #(Some(val), rest)
+    }
+    _ -> Error(Nil)
   }
 }
 
