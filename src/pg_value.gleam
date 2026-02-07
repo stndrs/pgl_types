@@ -64,6 +64,7 @@ pub type Value {
   Timestamptz(timestamp.Timestamp, Offset)
   Interval(interval.Interval)
   Array(List(Value))
+  Uuid(BitArray)
 }
 
 pub const null = Null
@@ -90,6 +91,12 @@ pub fn text(text: String) -> Value {
 
 pub fn bytea(bytea: BitArray) -> Value {
   Bytea(bytea)
+}
+
+/// Returns a UUID `Value`. Callers are responsible for ensuring the provided
+/// value is a valid UUID. If the value is not a valid UUID, encoding will fail.
+pub fn uuid(uuid: BitArray) -> Value {
+  Uuid(uuid)
 }
 
 pub fn time(time_of_day: calendar.TimeOfDay) -> Value {
@@ -151,6 +158,31 @@ pub fn to_string(value: Value) -> String {
     Timestamptz(ts, offset) -> timestamptz_to_string(ts, offset)
     Interval(val) -> interval.to_iso8601_string(val) |> single_quote
     Array(vals) -> array_to_string(vals)
+    Uuid(val) -> uuid_to_string(val)
+  }
+}
+
+fn uuid_to_string(uuid: BitArray) -> String {
+  do_uuid_to_string(uuid, 0, "", "-")
+}
+
+fn do_uuid_to_string(
+  uuid: BitArray,
+  position: Int,
+  acc: String,
+  separator: String,
+) -> String {
+  case position {
+    8 | 13 | 18 | 23 ->
+      do_uuid_to_string(uuid, position + 1, acc <> separator, separator)
+    _ ->
+      case uuid {
+        <<i:size(4), rest:bits>> -> {
+          let string = int.to_base16(i) |> string.lowercase
+          do_uuid_to_string(rest, position + 1, acc <> string, separator)
+        }
+        _ -> acc
+      }
   }
 }
 
@@ -276,6 +308,7 @@ pub fn encode(
     Timestamptz(ts, offset) -> encode_timestamptz(ts, offset, info)
     Interval(val) -> encode_interval(val, info)
     Array(val) -> encode_array(val, info)
+    Uuid(val) -> encode_uuid(val, info)
   }
 }
 
@@ -287,6 +320,19 @@ fn validate_typesend(
   use <- bool.lazy_guard(when: expected == info.typesend, return: next)
 
   Error("Attempted to encode " <> expected <> " as " <> info.typesend)
+}
+
+fn encode_uuid(
+  uuid: BitArray,
+  info: type_info.TypeInfo,
+) -> Result(BitArray, String) {
+  use <- validate_typesend("uuid_send", info)
+
+  case uuid {
+    <<uuid:big-int-size(128)>> ->
+      Ok(<<16:big-int-size(32), uuid:big-int-size(128)>>)
+    _ -> Error("Invalid UUID")
+  }
 }
 
 fn encode_array(
@@ -609,6 +655,7 @@ pub fn decode(
     "namerecv" -> decode_text(bits)
     "charrecv" -> decode_text(bits)
     "bytearecv" -> decode_bytea(bits)
+    "uuid_recv" -> decode_uuid(bits)
     "time_recv" -> decode_time(bits)
     "date_recv" -> decode_date(bits)
     "timestamp_recv" -> decode_timestamp(bits)
@@ -765,6 +812,13 @@ fn decode_text(bits: BitArray) -> Result(Dynamic, String) {
 
 fn decode_bytea(bits: BitArray) -> Result(Dynamic, String) {
   Ok(dynamic.bit_array(bits))
+}
+
+fn decode_uuid(bits: BitArray) -> Result(Dynamic, String) {
+  case bits {
+    <<_uuid:big-int-size(128)>> -> Ok(dynamic.bit_array(bits))
+    _ -> Error("invalid uuid")
+  }
 }
 
 fn decode_time(bits: BitArray) -> Result(Dynamic, String) {
