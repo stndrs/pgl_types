@@ -1,5 +1,6 @@
 # pg_value
 
+[![test](https://github.com/stndrs/pg_value/actions/workflows/test.yml/badge.svg)](https://github.com/stndrs/pg_value/actions/workflows/test.yml)
 [![Package Version](https://img.shields.io/hexpm/v/pg_value)](https://hex.pm/packages/pg_value)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/pg_value/)
 
